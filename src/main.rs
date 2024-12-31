@@ -1,6 +1,6 @@
 use std::thread;
 
-use rand::{rngs::ThreadRng, seq::IteratorRandom, thread_rng};
+use rand::{seq::IteratorRandom, thread_rng, Rng};
 
 #[derive(Clone)]
 enum Door {
@@ -14,7 +14,7 @@ struct Game {
 }
 
 impl Game {
-    fn new(n_doors: usize, rng: &mut ThreadRng) -> Self {
+    fn new<R: Rng + Sized>(n_doors: usize, rng: &mut R) -> Self {
         assert!(n_doors > 1);
         let goat = (0..n_doors).choose(rng).unwrap();
         let mut doors = vec![Door::Empty; n_doors];
@@ -22,19 +22,18 @@ impl Game {
         Game { doors, goat }
     }
 
-    fn guess(&self, mut guess: usize, accept_other: bool, rng: &mut ThreadRng) -> bool {
-        let other = if guess == self.goat {
-            // if they got it right, pick a random other door to leave closed
-            (0..guess)
-                .chain(guess + 1..self.doors.len())
-                .choose(rng)
-                .unwrap()
-        } else {
-            // we can't open the goat door, so that has to be the one they get as "other"
-            self.goat
-        };
+    fn guess<R: Rng + Sized>(&self, mut guess: usize, accept_other: bool, rng: &mut R) -> bool {
         if accept_other {
-            guess = other;
+            guess = if guess == self.goat {
+                // if they got it right, pick a random other door to leave closed
+                (0..guess)
+                    .chain(guess + 1..self.doors.len())
+                    .choose(rng)
+                    .unwrap()
+            } else {
+                // we can't open the goat door, so that has to be the one they get as "other"
+                self.goat
+            };
         }
         matches!(self.doors[guess], Door::Goat)
     }
